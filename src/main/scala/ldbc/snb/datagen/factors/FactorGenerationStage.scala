@@ -164,22 +164,6 @@ object FactorGenerationStage extends DatagenStage with Logging {
   import model.raw._
 
   private val rawFactors = Map(
-    "messageIds" -> Factor(CommentType, PostType) { case Seq(comments, posts) =>
-      val messages =
-        (comments.select($"creationDate", $"deletionDate", $"id".as("MessageId"))
-        |+| posts.select($"creationDate", $"deletionDate", $"id".as("MessageId"))
-        )
-        .select(
-          date_trunc("day", $"creationDate").as("creationDay"),
-          date_trunc("day", $"deletionDate").as("deletionDay"),
-          $"MessageId")
-        .orderBy($"MessageId")
-
-      val sampleSize = 20000.0
-      val count = messages.count()
-      val sampleFraction = Math.min(sampleSize / count, 1.0)
-      messages.sample(sampleFraction, 42)
-    },
     "countryNumPersons" -> Factor(PlaceType, PersonType) { case Seq(places, persons) =>
       val cities    = places.where($"type" === "City").cache()
       val countries = places.where($"type" === "Country").cache()
@@ -590,7 +574,7 @@ object FactorGenerationStage extends DatagenStage with Logging {
       // comments of friends
       val friendComments = numPersonComments.as("numPersonComments1")
         .join(undirectedKnows(personKnowsPerson).as("knows"), $"numPersonComments1.Person1Id" === $"knows.Person1Id", "leftouter")
-        .join(numPersonComments.as("numPersonComments2"),           $"numPersonComments2.Person1Id" === $"knows.Person2Id", "leftouter")
+        .join(numPersonComments.as("numPersonComments2"),     $"numPersonComments2.Person1Id" === $"knows.Person2Id", "leftouter")
 
       val numFriendComments = frequency(
         friendComments,
@@ -602,7 +586,7 @@ object FactorGenerationStage extends DatagenStage with Logging {
       // comments of friends of friends
       val friendOfFriendComments = numFriendComments.as("numFriendComments1")
         .join(undirectedKnows(personKnowsPerson).as("knows"), $"numFriendComments1.Person1Id" === $"knows.Person1Id", "leftouter")
-        .join(numFriendComments.as("numFriendComments2"),           $"numFriendComments2.Person1Id" === $"knows.Person2Id", "leftouter")
+        .join(numFriendComments.as("numFriendComments2"),     $"numFriendComments2.Person1Id" === $"knows.Person2Id", "leftouter")
 
       val numFriendOfFriendComments = frequency(
         friendOfFriendComments,
